@@ -66,8 +66,3 @@ def whatsapp_bot():
             msg.body("Please use WhatsApp's location sharing feature to send your location.")
 
     return str(response)
-
-
-if __name__ == '__main__':
-    # Use environment variables for Twilio keys in production
-    app.run(debug=True)
