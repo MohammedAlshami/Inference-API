@@ -24,16 +24,21 @@ def whatsapp_bot():
 
     # Step 1: Show menu options
     if current_step == 'menu':
+        msg.body("Welcome! Please select an option:\n\n1. Report an event\n2. Cancel")
+        msg.media('https://media.tenor.com/7dr3AgyEiN0AAAAj/anime-girl-wave.gif')  # Optional: Add an image for more context
+
+    # Step 2: Process menu selection
+    elif current_step == 'menu_selection':
         if 'report' in incoming_msg:
             user_states[from_number]['step'] = 'event_type'
-            msg.body("What type of event are you reporting?\n1. Floods\n2. Landslide\n3. Wildfire")
+            msg.body("What type of event are you reporting?\n\n1. Floods\n2. Landslide\n3. Wildfire")
         elif 'cancel' in incoming_msg:
             msg.body("Your report has been canceled. Type 'Report' to start over.")
             user_states[from_number] = {'step': 'menu'}  # Reset to initial state
         else:
-            msg.body("Welcome! Type 'Report' to report an event or 'Cancel' to exit.")
+            msg.body("Invalid selection. Please type 'Report' to report an event or 'Cancel' to exit.")
 
-    # Step 2: Select event type
+    # Step 3: Select event type
     elif current_step == 'event_type':
         if '1' in incoming_msg:
             user_states[from_number]['event'] = 'Floods'
@@ -50,13 +55,14 @@ def whatsapp_bot():
         else:
             msg.body("Invalid option. Please type 1, 2, or 3 to select an event type.")
 
-    # Step 3: Handle location sharing
+    # Step 4: Handle location sharing
     elif current_step == 'location':
         if request.form.get("Latitude") and request.form.get("Longitude"):
-            # Capture and print location data
             latitude = request.form.get("Latitude")
             longitude = request.form.get("Longitude")
             event_type = user_states[from_number].get('event', 'unknown event')
+
+            # Log the location data
             print(f"User reported {event_type} at location: Latitude - {latitude}, Longitude - {longitude}")
 
             # Acknowledge receipt and reset user state
@@ -66,3 +72,6 @@ def whatsapp_bot():
             msg.body("Please use WhatsApp's location sharing feature to send your location.")
 
     return str(response)
+
+if __name__ == "__main__":
+    app.run(debug=True)
