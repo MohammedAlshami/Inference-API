@@ -1,6 +1,6 @@
 {
     "main": {
-        "app_function": "app.app",  
+        "app_function": "app.py",  
         "aws_region": "ap-southeast-1",  
         "project_name": "drangue-bot", 
         "runtime": "python3.11",
