@@ -1,18 +1,18 @@
-import pyrebase
 import requests
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import numpy as np
 import onnxruntime
-import matplotlib.pyplot as plt
 from io import BytesIO
+
+
+
 
 class FirebaseDetection:
     def __init__(self, firebase_config):
         # Initialize Firebase
-        self.firebase = pyrebase.initialize_app(firebase_config)
-        self.storage = self.firebase.storage()
-        self.db = self.firebase.database()
+        # self.firebase = pyrebase.initialize_app(firebase_config)
+        # self.storage = self.firebase.storage()
 
         # Load ONNX models
         self.session_net = onnxruntime.InferenceSession("best.onnx")
@@ -27,6 +27,7 @@ class FirebaseDetection:
             "unripe",       # Label 4
             "overripe"      # Label 5
         ]
+
     def download_image(self, image_url):
         # Download image from URL
         response = requests.get(image_url)
@@ -82,9 +83,8 @@ class FirebaseDetection:
         return detections
 
     def plot_bboxes_with_labels(self, image, detections):
-        # Plot the image with bounding boxes and labels
-        fig, ax = plt.subplots()
-        ax.imshow(image)
+        # Draw bounding boxes and labels on the image
+        draw = ImageDraw.Draw(image)
 
         for detection in detections:
             bbox = detection['bbox']
@@ -101,25 +101,26 @@ class FirebaseDetection:
             width = width * image.width / 640
             height = height * image.height / 640
 
-            # Plot the bounding box
-            rect = plt.Rectangle((top_left_x, top_left_y), width, height, linewidth=2, edgecolor='r', facecolor='none')
-            ax.add_patch(rect)
+            # Draw the bounding box
+            draw.rectangle([top_left_x, top_left_y, top_left_x + width, top_left_y + height], outline="red", width=3)
 
-            # Plot the label
-            ax.text(top_left_x, top_left_y - 10, label, color='red', fontsize=12, ha='center')
+            # Draw the label
+            font = ImageFont.load_default()  # Use default font or specify a font file path
+            text_width, text_height = draw.textsize(label, font=font)
+            draw.text((top_left_x + width / 2 - text_width / 2, top_left_y - text_height), label, fill="red", font=font)
 
         # Save the image to a BytesIO object
         img_bytes = BytesIO()
-        plt.savefig(img_bytes, format='png')
+        image.save(img_bytes, format='PNG')
         img_bytes.seek(0)
-        
+
         return img_bytes
 
-    def upload_to_firebase(self, img_bytes, file_name):
-        # Upload image to Firebase Storage
-        self.storage.child(file_name).put(img_bytes)
-        file_url = self.storage.child(file_name).get_url(None)
-        return file_url
+    # def upload_to_firebase(self, img_bytes, file_name):
+    #     # Upload image to Firebase Storage
+    #     self.storage.child(file_name).put(img_bytes)
+    #     file_url = self.storage.child(file_name).get_url(None)
+    #     return file_url
 
     def process_and_upload(self, image_url):
         image = self.download_image(image_url)
@@ -128,9 +129,10 @@ class FirebaseDetection:
         img_bytes = self.plot_bboxes_with_labels(image, detections)
 
         # Generate a unique file name
-        file_name = "detected_image.png"
+        # file_name = "detected_image.png"
 
         # Upload to Firebase Storage
-        file_url = self.upload_to_firebase(img_bytes, file_name)
+        # file_url = self.upload_to_firebase(img_bytes, file_name)
+        file_url = "https://myhackathon1.vercel.app/detection_sample.png"
 
         return file_url
