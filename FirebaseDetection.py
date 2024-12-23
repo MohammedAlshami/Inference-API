@@ -124,9 +124,9 @@ class FirebaseDetection:
 
     def process_and_upload(self, image_url):
         image = self.download_image(image_url)
-        detections = self.detect_image(image)
+        # detections = self.detect_image(image)
 
-        img_bytes = self.plot_bboxes_with_labels(image, detections)
+        # img_bytes = self.plot_bboxes_with_labels(image, detections)
 
         # Generate a unique file name
         # file_name = "detected_image.png"
