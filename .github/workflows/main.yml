@@ -54,4 +54,10 @@ jobs:
       - name: Deploy to Lambda
         run: |
           source venv/bin/activate
-          zappa update main || zappa deploy main
+          if zappa status main > /dev/null 2>&1; then
+            echo "Application already deployed. Running zappa update."
+            zappa update main
+          else
+            echo "Application not found. Running zappa deploy."
+            zappa deploy main
+          fi
