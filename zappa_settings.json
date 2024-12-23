@@ -8,6 +8,8 @@
     "timeout_seconds": 30,
     "memory_size": 128,
     "keep_warm": false,
+    "slim_handler": true,
+
     "environment_variables": {
       "ENV": "production",
       "DEBUG": "False",
