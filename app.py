@@ -37,6 +37,12 @@ def detect_disease(image_url):
     # Placeholder function: Replace with actual implementation
     return image_url_with_detection
 
+
+@app.route('/', methods=['GET', 'POST'])
+def health_check():
+    """Health check endpoint to verify the API status."""
+    return {"status": "true"}, 200
+
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp_bot_handler():
     """Handle incoming messages from WhatsApp."""
