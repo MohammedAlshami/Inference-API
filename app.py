@@ -1,19 +1,41 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import os
+from  FirebaseDetection import FirebaseDetection 
 
 app = Flask(__name__)
 
 # In-memory state tracking (Use a database for persistence in production)
 user_states = {}
 
+
+
+# Firebase Configuration
+firebase_config = {
+    "apiKey": "AIzaSyBLv1DiRB6egmpaoIKfjODXZF5fYheQKIM",
+    "authDomain": "realtimedatabasetest-f226a.firebaseapp.com",
+    "databaseURL": "https://realtimedatabasetest-f226a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "projectId": "realtimedatabasetest-f226a",
+    "storageBucket": "realtimedatabasetest-f226a.appspot.com",
+    "messagingSenderId": "348704796176",
+    "appId": "1:348704796176:web:38994c5ab4d54b752ce495"
+}
+
+# Example usage
+firebase_detection = FirebaseDetection(firebase_config)
+
+
 def detect_ripeness(image_url):
+    image_url_with_detection = firebase_detection.process_and_upload(image_url)
+
     # Placeholder function: Replace with actual implementation
-    return "https://myhackathon1.vercel.app/detection_sample.png"
+    return image_url_with_detection
 
 def detect_disease(image_url):
+    image_url_with_detection = firebase_detection.process_and_upload(image_url)
+
     # Placeholder function: Replace with actual implementation
-    return "https://myhackathon1.vercel.app/detection_sample.png"
+    return image_url_with_detection
 
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp_bot_handler():
