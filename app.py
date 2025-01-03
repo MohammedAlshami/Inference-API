@@ -8,13 +8,13 @@ app = Flask(__name__)
 user_states = {}
 
 def detect_ripeness(image_url):
-    image_url_with_detection = 'https://i.redd.it/cwwy53jnfbu81.jpg'
+    image_url_with_detection = 'https://m.media-amazon.com/images/I/71bgp0-0swL._AC_UF894,1000_QL80_.jpg'
 
     # Placeholder function: Replace with actual implementation
     return image_url_with_detection
 
 def detect_disease(image_url):
-    image_url_with_detection = 'https://i.redd.it/cwwy53jnfbu81.jpg'
+    image_url_with_detection = 'https://m.media-amazon.com/images/I/71bgp0-0swL._AC_UF894,1000_QL80_.jpg'
 
     # Placeholder function: Replace with actual implementation
     return image_url_with_detection
@@ -25,7 +25,7 @@ def health_check():
     """Health check endpoint to verify the API status."""
     return {"status": "true"}, 200
 
-@app.route('/', methods=['POST'])
+@app.route('/whatsapp', methods=['POST'])
 def whatsapp_bot_handler():
     """Handle incoming messages from WhatsApp."""
     incoming_msg = request.form.get('Body', '').strip().lower()
