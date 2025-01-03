@@ -21,7 +21,7 @@ class FarmBotWhatsApp:
                 'id': 'W123',
                 'name': 'John',
                 'language': 'English',
-                'phone': 'whatsapp:+1234567890'  # Worker's WhatsApp number
+                'phone': 'whatsapp:+601164504470'  # Worker's WhatsApp number
             }
         }
         
