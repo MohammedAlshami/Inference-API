@@ -201,7 +201,7 @@ class FarmBotWhatsApp:
             body=f"Analysis Results:\nReceived Image: {media_url}\nRipeness: {ripeness}\nConfidence: {confidence}%"
         )
 
-@app.route('/webhook', methods=['POST'])
+@app.route('/', methods=['POST'])
 def webhook():
     bot = FarmBotWhatsApp()
     incoming_msg = request.values.get('Body', '').lower()
