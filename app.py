@@ -10,10 +10,10 @@ app = Flask(__name__)
 class FarmBotWhatsApp:
     def __init__(self):
         # Twilio credentials
-        self.account_sid = 'YOUR_ACCOUNT_SID'
-        self.auth_token = 'YOUR_AUTH_TOKEN'
+        self.account_sid = ''
+        self.auth_token = ''
         self.client = Client(self.account_sid, self.auth_token)
-        self.bot_number = 'whatsapp:+1234567890'  # Your Twilio WhatsApp number
+        self.bot_number = 'whatsapp:+14155238886'  # Your Twilio WhatsApp number
         
         # Simulate pre-registered worker data
         self.worker_data = {
@@ -21,7 +21,7 @@ class FarmBotWhatsApp:
                 'id': 'W123',
                 'name': 'John',
                 'language': 'English',
-                'phone': 'whatsapp:+1234567890'  # Worker's WhatsApp number
+                'phone': 'whatsapp:+601164504470'  # Worker's WhatsApp number
             }
         }
         
