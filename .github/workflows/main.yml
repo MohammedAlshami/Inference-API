@@ -1,49 +1,73 @@
-name: Deploy to AWS ECS
+name: Deploy to AWS Lambda
 
 on:
   push:
     branches:
       - main
 
-env:
-  ECR_IMAGE: ${{ vars.ECR_IMAGE }}
-  AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
-
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          aws-region: ap-southeast-1
 
-      - name: Log in to Amazon ECR
-        run: |
-          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Docker Image
-        run: |
-          docker buildx create --use
-          docker buildx inspect --bootstrap
-          docker buildx build --platform linux/arm64 -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_IMAGE:latest --push .
-
-      - name: Deploy to ECS
-        uses: imehedi/actions-awscli-v2@latest
-        with:
-          args: ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
+      - name: Build, tag, and push image to Amazon ECR
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: your-repository-name
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install zappa
+          pip install httplib2==0.22.0
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Update zappa_settings.json with environment variables
+        run: |
+          envsubst < zappa_settings.json > zappa_settings_tmp.json
+          mv zappa_settings_tmp.json zappa_settings.json
+        env:
+          MONGODB_ATLAS_CLUSTER_URI: ${{ secrets.MONGODB_ATLAS_CLUSTER_URI }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+
+      - name: Deploy to Lambda
+        run: |
+          source venv/bin/activate
+          if zappa status main > /dev/null 2>&1; then
+            echo "Application already deployed. Running zappa update."
+            zappa update main
+          else
+            echo "Application not found. Running zappa deploy."
+            zappa deploy main
+          fi
