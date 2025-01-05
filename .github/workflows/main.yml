@@ -24,10 +24,21 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Ensure ECR Repository Exists
+        env:
+          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
+        run: |
+          if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
+            echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
+            aws ecr create-repository --repository-name $ECR_REPOSITORY
+          else
+            echo "Repository $ECR_REPOSITORY already exists."
+          fi
+
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: your-repository-name
+          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -52,18 +63,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
-
-      - name: Ensure ZappaLambdaExecution Role Exists
-        run: |
-          ROLE_NAME="ZappaLambdaExecution"
-          if ! aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
-            echo "Role $ROLE_NAME does not exist. Creating it now."
-            aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document file://trust-policy.json
-            aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-            aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
-          else
-            echo "Role $ROLE_NAME already exists."
-          fi
 
       - name: Update zappa_settings.json with environment variables
         run: |

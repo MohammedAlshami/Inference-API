@@ -6,31 +6,15 @@
     "runtime": "python3.11",
     "s3_bucket": "zappa-drangue-deployments-test",
     "timeout_seconds": 30,
-    "memory_size": 256,
-    "keep_warm": true,
-    "warm_functions": true,
+    "memory_size": 128,
+    "keep_warm": false,
     "slim_handler": true,
-    "api_gateway_endpoint": "regional",
-    "lambda_handler": "lambda.handler",
-    "manage_roles": false,
-    "role_name": "ZappaLambdaExecution",
-    "cors": true,
-    "binary_support": true,
 
     "environment_variables": {
       "ENV": "production",
       "DEBUG": "False",
       "MONGODB_ATLAS_CLUSTER_URI": "${MONGODB_ATLAS_CLUSTER_URI}",
       "DB_NAME": "${DB_NAME}"
-    },
-    
-    "aws_environment_variables": {
-      "PYTHONPATH": "/var/task"
-    },
-
-    "vpc_config": {
-      "SubnetIds": [],
-      "SecurityGroupIds": []
     }
   }
 }
