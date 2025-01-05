@@ -29,10 +29,10 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/flask-lambda:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/flask-lambda:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/flask-lambda:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/flask-lambda:buildcache,mode=max
+            ${{ secrets.DOCKERHUB_USERNAME }}/drangue-bot:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/drangue-bot:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/drangue-bot:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/drangue-bot:buildcache,mode=max
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -53,13 +53,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install zappa
+          pip install gunicorn
           pip install httplib2==0.22.0
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
 
       - name: Update zappa_settings.json with environment variables
         run: |
@@ -74,8 +70,8 @@ jobs:
           source venv/bin/activate
           if zappa status main > /dev/null 2>&1; then
             echo "Application already deployed. Running zappa update."
-            zappa update main
+            zappa update main --disable-progress
           else
             echo "Application not found. Running zappa deploy."
-            zappa deploy main
+            zappa deploy main --disable-progress
           fi

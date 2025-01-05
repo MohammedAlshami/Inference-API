@@ -4,17 +4,27 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Copy requirements file
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy application code
 COPY . .
 
-# Expose port (if your Flask app uses a specific port)
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
 EXPOSE 5000
 
-# Command to run the application
-CMD ["python", "app.py"]
+# Run the application
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
