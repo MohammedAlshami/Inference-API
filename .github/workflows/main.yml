@@ -1,69 +1,60 @@
-name: Deploy Flask App
+name: Deploy to AWS ECS
 
 on:
   push:
     branches:
       - main
 
+env:
+  ECR_IMAGE: ${{ vars.ECR_IMAGE }}
+  AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+      # Step 2: Set up QEMU for multi-platform builds (optional, for ARM64 support)
+      - name: Set up QEMU
+        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        if: runner.os == 'Linux'
+
+      # Step 3: Set up Docker Buildx for building multi-platform images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 4: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          region: ${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
-      - name: Build, tag, and push Docker image
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      # Step 5: Log in to Amazon ECR
+      - name: Log in to Amazon ECR
         run: |
-          aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
-          repository_name=flask-app
-          image_tag=latest
+          aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
-          # Create ECR Repository if it doesn't exist
-          aws ecr describe-repositories --repository-names $repository_name || \
-          aws ecr create-repository --repository-name $repository_name
+      # Step 6: Build and Push Docker Image
+      - name: Build and Push Docker Image
+        run: |
+          docker buildx create --use
+          docker buildx inspect --bootstrap
+          docker buildx build --platform linux/arm64 -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_IMAGE:latest --push .
 
-          # Build, Tag, and Push the Image
-          docker build -t $repository_name .
-          docker tag $repository_name:latest $aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
-          docker push $aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
-
-  deploy-to-lambda:
-    runs-on: ubuntu-latest
-    needs: build-and-push
-
-    steps:
-      - name: Deploy to AWS Lambda
+      # Step 7: Deploy to ECS
+      - name: Deploy to ECS
+        uses: imehedi/actions-awscli-v2@latest
+        with:
+          args: ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
-          repository_name=flask-app
-          image_tag=latest
-          image_uri=$aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
-
-          # Create Lambda Function if not exists
-          function_name=flask-app-lambda
-          aws lambda get-function --function-name $function_name || \
-          aws lambda create-function \
-            --function-name $function_name \
-            --role arn:aws:iam::<your-role-arn> \
-            --code ImageUri=$image_uri \
-            --package-type Image \
-            --timeout 30 \
-            --memory-size 512
-
-          # Update Lambda Function
-          aws lambda update-function-code \
-            --function-name $function_name \
-            --image-uri $image_uri
+          AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
