@@ -16,22 +16,25 @@ jobs:
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+        with:
+          region: ${{ secrets.AWS_REGION }}
 
       - name: Build, tag, and push Docker image
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
-          region=$(aws configure get region)
           repository_name=flask-app
           image_tag=latest
 
-          # Create ECR Repository if not exists
+          # Create ECR Repository if it doesn't exist
           aws ecr describe-repositories --repository-names $repository_name || \
           aws ecr create-repository --repository-name $repository_name
 
-          # Build and Push Image
+          # Build, Tag, and Push the Image
           docker build -t $repository_name .
-          docker tag $repository_name:latest $aws_account_id.dkr.ecr.$region.amazonaws.com/$repository_name:$image_tag
-          docker push $aws_account_id.dkr.ecr.$region.amazonaws.com/$repository_name:$image_tag
+          docker tag $repository_name:latest $aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
+          docker push $aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
 
   deploy-to-lambda:
     runs-on: ubuntu-latest
@@ -42,13 +45,12 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
-          region=$(aws configure get region)
           repository_name=flask-app
           image_tag=latest
-          image_uri=$aws_account_id.dkr.ecr.$region.amazonaws.com/$repository_name:$image_tag
+          image_uri=$aws_account_id.dkr.ecr.$AWS_REGION.amazonaws.com/$repository_name:$image_tag
 
           # Create Lambda Function if not exists
           function_name=flask-app-lambda
