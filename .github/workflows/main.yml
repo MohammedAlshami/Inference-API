@@ -38,7 +38,7 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: your-repository-name
+          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -81,3 +81,4 @@ jobs:
           else
             echo "Application not found. Running zappa deploy."
             zappa deploy main
+          fi
