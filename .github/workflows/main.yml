@@ -24,6 +24,17 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Ensure ECR Repository Exists
+        env:
+          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
+        run: |
+          if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
+            echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
+            aws ecr create-repository --repository-name $ECR_REPOSITORY
+          else
+            echo "Repository $ECR_REPOSITORY already exists."
+          fi
+
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -70,4 +81,3 @@ jobs:
           else
             echo "Application not found. Running zappa deploy."
             zappa deploy main
-          fi
