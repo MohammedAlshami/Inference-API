@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify
-from InferencePipeline import InferencePipeline
+# from InferencePipeline import InferencePipeline
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 import os
@@ -11,15 +11,15 @@ app = Flask(__name__)
 # Enable CORS
 CORS(app)
 
-inferencePipeline = InferencePipeline()
+# inferencePipeline = InferencePipeline()
 
 
-@app.route('/detect', methods=['POST'])
-def detect():
-    data = request.get_json()
-    media_url = data['media_url']
-    detection_result_img = inferencePipeline.process_and_upload(media_url)
-    return jsonify({'detection_result_img': detection_result_img})
+# @app.route('/detect', methods=['POST'])
+# def detect():
+#     data = request.get_json()
+#     media_url = data['media_url']
+#     detection_result_img = inferencePipeline.process_and_upload(media_url)
+#     return jsonify({'detection_result_img': detection_result_img})
 
 @app.route('/')
 def home():
