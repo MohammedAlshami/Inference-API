@@ -22,11 +22,13 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-southeast-1
 
-    # Install AWS CLI (if not already installed)
+    # Install AWS CLI (official script)
     - name: Install AWS CLI
       run: |
-        sudo apt-get update
-        sudo apt-get install -y awscli
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+        aws --version  # Verify installation
 
     # Log in to Amazon ECR
     - name: Log in to Amazon ECR
