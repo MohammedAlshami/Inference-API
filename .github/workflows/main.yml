@@ -91,11 +91,14 @@ jobs:
           fi
           
           echo "Using Zappa to deploy or update Lambda function..."
+          
+          # Check if the Lambda function is already deployed
           if zappa status | grep "active"; then
+            echo "Lambda function is already deployed. Updating..."
             zappa update --docker-image-uri $image_uri
           else
+            echo "Lambda function is not deployed. Deploying..."
             zappa deploy --docker-image-uri $image_uri
-          fi
 
       # Post-deployment check
       - name: Validate Deployment
