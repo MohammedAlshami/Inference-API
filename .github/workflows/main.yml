@@ -72,6 +72,12 @@ jobs:
         # Push the Docker image to ECR
         docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
+
+    - name: Deploy to Lambda
+      run: |
+        source venv/bin/activate
+        zappa update main || zappa deploy main
+
     # Update the Lambda function with the Docker image
     - name: Update Lambda function with Docker image
       run: |
