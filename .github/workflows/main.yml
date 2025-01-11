@@ -63,12 +63,22 @@ jobs:
     - name: Check if Lambda function exists, create if not
       run: |
         lambda_function_name="inference"
-        # Check if Lambda function exists
+        ecr_repo="flask-app"
+        image_tag="latest"
+        
+        # Set the ECR image URI
+        aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+        ecr_image_uri="$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
+        
+        # Check if the Lambda function exists
         if ! aws lambda get-function --function-name $lambda_function_name > /dev/null 2>&1; then
           echo "Lambda function $lambda_function_name does not exist. Creating..."
           
-          # Get the AWS account ID dynamically
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          # Check if the image exists in ECR
+          if ! aws ecr describe-images --repository-name $ecr_repo --image-ids imageTag=$image_tag > /dev/null 2>&1; then
+            echo "Error: Docker image with tag $image_tag does not exist in ECR."
+            exit 1
+          fi
           
           # Create the Lambda function using the ECR image
           aws lambda create-function \
