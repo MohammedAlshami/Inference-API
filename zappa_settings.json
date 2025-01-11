@@ -1,10 +1,10 @@
 {
   "main": {
-    "app_function": "main.app",
+    "app_function": "app.lambda_handler",
     "aws_region": "ap-southeast-1",
     "project_name": "inference",
     "runtime": "python3.11",
-    "docker_image": "aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/flask-app:latest",
+    "image_uri": "aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/flask-app:latest",
     "s3_bucket": "zappa-drangue-deployments-test",
     "timeout_seconds": 60,
     "memory_size": 512,
