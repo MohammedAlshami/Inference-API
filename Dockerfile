@@ -1,17 +1,14 @@
-# Use the official Python 3.11 slim image as the base
-FROM python:3.11-slim
+# Use AWS Lambda Python base image
+FROM public.ecr.aws/lambda/python:3.11
 
-# Set the working directory inside the container
-WORKDIR /app
+# Copy requirements.txt
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Copy all project files to the working directory
-COPY . .
+# Install the specified packages
+RUN pip install -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy all application files
+COPY . ${LAMBDA_TASK_ROOT}
 
-# Expose port 8080 for local testing (not needed in Lambda but useful locally)
-EXPOSE 8080
-
-# Start the Flask app
-CMD ["python", "app.py"]
+# Set the CMD to your handler
+CMD [ "app.lambda_handler" ]

@@ -77,17 +77,24 @@ jobs:
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           # Push the Docker image to ECR
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-      # Deploy to Lambda
+
+
       # Deploy to Lambda
       - name: Deploy to Lambda
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          source venv/bin/activate
-          echo "Using Zappa to deploy or update Lambda function..."
-          if zappa status; then
-            zappa update --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-          else
-            zappa deploy --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-          fi
+          # Update Lambda function configuration to use the new image
+          aws lambda update-function-code \
+            --function-name inference-main \
+            --image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          
+          # Wait for the update to complete
+          aws lambda wait function-updated --function-name inference-main
+          
+          # Test the function
+          echo "Testing Lambda function..."
+          aws lambda invoke --function-name inference-main \
+            --payload '{"httpMethod": "GET", "path": "/"}' \
+            response.json
