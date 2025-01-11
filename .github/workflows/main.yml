@@ -87,4 +87,3 @@ jobs:
         aws lambda update-function-code \
           --function-name $lambda_function_name \
           --image-uri $ecr_image_uri \
-          --role lambdaIAMRole  # Referencing the IAM role by name
