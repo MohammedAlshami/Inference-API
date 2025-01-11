@@ -3,7 +3,7 @@ name: Build, Deploy to ECR, and Update Lambda with Docker Image
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch
+      - main
 
 jobs:
   deploy:
@@ -54,12 +54,8 @@ jobs:
       - name: Ensure ECR repository exists
         run: |
           ecr_repo="flask-app"
-          # Check if the repository exists
           if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
-            echo "ECR repository $ecr_repo does not exist. Creating..."
             aws ecr create-repository --repository-name $ecr_repo
-          else
-            echo "ECR repository $ecr_repo already exists."
           fi
 
       # Build the Docker image
@@ -67,9 +63,7 @@ jobs:
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
-          # Build the Docker image
           docker build -t $ecr_repo:$image_tag .
-          # Tag the Docker image for ECR
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
@@ -79,10 +73,8 @@ jobs:
           ecr_repo="flask-app"
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          # Push the Docker image to ECR
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
-      # Deploy to Lambda
       # Deploy to Lambda
       - name: Deploy to Lambda
         run: |
@@ -90,9 +82,29 @@ jobs:
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           source venv/bin/activate
+          
+          # Ensure Docker image URI is valid
+          image_uri=$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          if [[ -z "$image_uri" ]]; then
+            echo "Error: Docker image URI is empty."
+            exit 1
+          fi
+          
           echo "Using Zappa to deploy or update Lambda function..."
-          if zappa status; then
-            zappa update --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          if zappa status | grep "active"; then
+            zappa update --docker-image-uri $image_uri
           else
-            zappa deploy --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+            zappa deploy --docker-image-uri $image_uri
+          fi
+
+      # Post-deployment check
+      - name: Validate Deployment
+        run: |
+          source venv/bin/activate
+          api_url=$(zappa status | jq -r '.api_url')
+          echo "Testing deployed API endpoint: $api_url"
+          response=$(curl -s -o /dev/null -w "%{http_code}" $api_url)
+          if [ "$response" != "200" ]; then
+            echo "Error: API returned status code $response"
+            exit 1
           fi
