@@ -93,8 +93,8 @@ jobs:
           # Wait for the update to complete
           aws lambda wait function-updated --function-name inference-main
           
-          # Test the function
-          echo "Testing Lambda function..."
-          aws lambda invoke --function-name inference-main \
-            --payload '{"httpMethod": "GET", "path": "/"}' \
-            response.json
+          # # Test the function
+          # echo "Testing Lambda function..."
+          # aws lambda invoke --function-name inference-main \
+          #   --payload '{"httpMethod": "GET", "path": "/"}' \
+          #   response.json

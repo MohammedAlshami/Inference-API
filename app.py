@@ -35,7 +35,6 @@ from dotenv import load_dotenv
 from urllib.parse import urlparse
 import os
 from flask_cors import CORS
-from aws_lambda_wsgi import render_request
 
 app = Flask(__name__)
 CORS(app)
@@ -43,15 +42,6 @@ CORS(app)
 @app.route('/')
 def home():
     return 'WhatsApp Bot is running!'
-
-def lambda_handler(event, context):
-    """
-    Lambda handler that transforms API Gateway event into WSGI request
-    and processes it with Flask app
-    """
-    # Convert API Gateway event to WSGI request
-    response = render_request(app, event, context)
-    return response
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
