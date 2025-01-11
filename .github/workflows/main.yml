@@ -85,14 +85,11 @@ jobs:
       # Deploy to Lambda
       - name: Deploy to Lambda
         run: |
-          source venv/bin/activate
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           ecr_repo="flask-app"
           image_tag="latest"
-          docker_image_uri="$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          # Deploy to Lambda using the Docker image
+          zappa deploy --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
           
-          # Update zappa settings to include the docker image URI
-          sed -i "s|\"docker_image\":.*|\"docker_image\": \"$docker_image_uri\"|" zappa_settings.json
-
-          # Deploy or update via Zappa
-          zappa update main || zappa deploy main
+          # Or update Lambda if already deployed
+          zappa update --docker-image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
