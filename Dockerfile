@@ -10,8 +10,8 @@ COPY . .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose port 8080 (if running locally)
+# Expose port 8080 for local testing (not needed in Lambda but useful locally)
 EXPOSE 8080
 
-# Specify the command to run the Flask app
+# Start the Flask app
 CMD ["python", "app.py"]
