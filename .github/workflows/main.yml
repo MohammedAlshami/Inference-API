@@ -1,84 +1,62 @@
-name: Deploy to AWS Lambda
+name: Build and Deploy to Lambda
 
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on pushes to the main branch
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # Checkout code
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-1
+    # Set up Python 3.11 (for local testing, if needed)
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+    # Install dependencies (optional if you want to test locally)
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
 
-      - name: Ensure ECR Repository Exists
-        env:
-          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
-        run: |
-          if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
-            echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
-            aws ecr create-repository --repository-name $ECR_REPOSITORY
-          else
-            echo "Repository $ECR_REPOSITORY already exists."
-          fi
+    # Log in to Amazon ECR
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+    # Build the Docker image
+    - name: Build Docker image
+      run: |
+        aws_region="ap-southeast-1"  # Updated with your region
+        ecr_repo="your-ecr-repository-name"  # Update with your ECR repo name
+        image_tag="latest"
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+        # Build the Docker image
+        docker build -t $ecr_repo:$image_tag .
 
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install zappa
-          pip install httplib2==0.22.0
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        # Tag the Docker image for ECR
+        aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+        docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
 
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
+    # Push the Docker image to ECR
+    - name: Push Docker image to ECR
+      run: |
+        docker push $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
 
-      - name: Update zappa_settings.json with environment variables
-        run: |
-          envsubst < zappa_settings.json > zappa_settings_tmp.json
-          mv zappa_settings_tmp.json zappa_settings.json
-        env:
-          MONGODB_ATLAS_CLUSTER_URI: ${{ secrets.MONGODB_ATLAS_CLUSTER_URI }}
-          DB_NAME: ${{ secrets.DB_NAME }}
+    # Deploy to AWS Lambda
+    - name: Deploy to AWS Lambda
+      run: |
+        aws_region="ap-southeast-1"  # Updated with your region
+        lambda_function_name="your-lambda-function-name"  # Update with your Lambda function name
 
-      - name: Deploy to Lambda
-        run: |
-          source venv/bin/activate
-          if zappa status main > /dev/null 2>&1; then
-            echo "Application already deployed. Running zappa update."
-            zappa update main
-          else
-            echo "Application not found. Running zappa deploy."
-            zappa deploy main
-          fi
+        # Update the Lambda function to use the new container image
+        aws lambda update-function-code \
+          --function-name $lambda_function_name \
+          --image-uri $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
