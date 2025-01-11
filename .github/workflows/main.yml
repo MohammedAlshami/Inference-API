@@ -67,21 +67,22 @@ jobs:
     - name: Check if Lambda function exists, create if not
       run: |
         lambda_function_name="inference"
-        
+
         # Check if Lambda function exists
         if ! aws lambda get-function --function-name $lambda_function_name > /dev/null 2>&1; then
           echo "Lambda function $lambda_function_name does not exist. Creating..."
           
-          # Create the Lambda function
+          # Create the Lambda function using the ECR image
           aws lambda create-function \
             --function-name $lambda_function_name \
             --package-type Image \
-            --image-uri $ecr_image_uri \
+            --code ImageUri=$ecr_image_uri \
             --role arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/lambda-role \
             --timeout 15
         else
           echo "Lambda function $lambda_function_name already exists."
         fi
+
 
     # Update the Lambda function
     - name: Update Lambda function
