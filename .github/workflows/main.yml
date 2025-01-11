@@ -14,11 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
+      # Install dependencies
       - name: Install dependencies
         run: |
           python -m venv venv
@@ -29,6 +31,7 @@ jobs:
           pip install httplib2==0.22.0
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      # Install jq
       - name: Install jq
         run: |
           sudo apt-get update
@@ -79,23 +82,17 @@ jobs:
           # Push the Docker image to ECR
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
+      # Deploy to Lambda
       - name: Deploy to Lambda
         run: |
           source venv/bin/activate
-          zappa update main || zappa deploy main
-
-      # Update the Lambda function with the Docker image
-      - name: Update Lambda function with Docker image
-        run: |
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           ecr_repo="flask-app"
           image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          ecr_image_uri="$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
+          docker_image_uri="$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
           
-          lambda_function_name="inference"
-          echo "Updating Lambda function $lambda_function_name to use image $ecr_image_uri"
-          
-          # Update the Lambda function to use the new ECR image
-          aws lambda update-function-code \
-            --function-name $lambda_function_name \
-            --image-uri $ecr_image_uri
+          # Update zappa settings to include the docker image URI
+          sed -i "s|\"docker_image\":.*|\"docker_image\": \"$docker_image_uri\"|" zappa_settings.json
+
+          # Deploy or update via Zappa
+          zappa update main || zappa deploy main
