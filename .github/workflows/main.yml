@@ -63,6 +63,26 @@ jobs:
         # Push the Docker image to ECR
         docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
+    # Check if Lambda function exists, create if not
+    - name: Check if Lambda function exists, create if not
+      run: |
+        lambda_function_name="inference"
+        
+        # Check if Lambda function exists
+        if ! aws lambda get-function --function-name $lambda_function_name > /dev/null 2>&1; then
+          echo "Lambda function $lambda_function_name does not exist. Creating..."
+          
+          # Create the Lambda function
+          aws lambda create-function \
+            --function-name $lambda_function_name \
+            --package-type Image \
+            --image-uri $ecr_image_uri \
+            --role arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/lambda-role \
+            --timeout 15
+        else
+          echo "Lambda function $lambda_function_name already exists."
+        fi
+
     # Update the Lambda function
     - name: Update Lambda function
       run: |
