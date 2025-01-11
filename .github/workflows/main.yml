@@ -1,4 +1,4 @@
-name: Build and Deploy to Lambda
+name: Build, Deploy to ECR, and Update Lambda
 
 on:
   push:
@@ -14,28 +14,42 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # Set up Python 3.11 (for local testing, if needed)
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+    # Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
       with:
-        python-version: 3.11
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-southeast-1
 
-    # Install dependencies (optional if you want to test locally)
-    - name: Install dependencies
+    # Install AWS CLI (if not already installed)
+    - name: Install AWS CLI
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        sudo apt-get update
+        sudo apt-get install -y awscli
 
     # Log in to Amazon ECR
     - name: Log in to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    # Ensure ECR repository exists
+    - name: Ensure ECR repository exists
+      run: |
+        ecr_repo="flask-app"
+
+        # Check if the repository exists
+        if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
+          echo "ECR repository $ecr_repo does not exist. Creating..."
+          aws ecr create-repository --repository-name $ecr_repo
+        else
+          echo "ECR repository $ecr_repo already exists."
+        fi
+
     # Build the Docker image
     - name: Build Docker image
       run: |
-        aws_region="ap-southeast-1"  # Updated with your region
-        ecr_repo="your-ecr-repository-name"  # Update with your ECR repo name
+        ecr_repo="flask-app"
         image_tag="latest"
 
         # Build the Docker image
@@ -43,20 +57,30 @@ jobs:
 
         # Tag the Docker image for ECR
         aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-        docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
+        docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
     # Push the Docker image to ECR
     - name: Push Docker image to ECR
       run: |
-        docker push $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
+        ecr_repo="flask-app"
+        image_tag="latest"
+        aws_account_id=$(aws sts get-caller-identity --query Account --output text)
 
-    # Deploy to AWS Lambda
-    - name: Deploy to AWS Lambda
+        # Push the Docker image to ECR
+        docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+
+    # Update the Lambda function
+    - name: Update Lambda function
       run: |
-        aws_region="ap-southeast-1"  # Updated with your region
-        lambda_function_name="your-lambda-function-name"  # Update with your Lambda function name
+        ecr_repo="flask-app"
+        image_tag="latest"
+        aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+        ecr_image_uri="$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
+        lambda_function_name="inference"
 
-        # Update the Lambda function to use the new container image
+        echo "Updating Lambda function $lambda_function_name to use image $ecr_image_uri"
+
+        # Update the Lambda function to use the new ECR image
         aws lambda update-function-code \
           --function-name $lambda_function_name \
-          --image-uri $aws_account_id.dkr.ecr.$aws_region.amazonaws.com/$ecr_repo:$image_tag
+          --image-uri $ecr_image_uri
