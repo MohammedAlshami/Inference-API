@@ -1,4 +1,4 @@
-name: Deploy Example
+name: Deploy to AWS Lambda
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
       - main
 
 jobs:
-  deploy-example:
-    name: Deploy Blog Example
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -22,16 +22,24 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR Repository Exists
+        env:
+          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
+        run: |
+          if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
+            echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
+            aws ecr create-repository --repository-name $ECR_REPOSITORY
+          else
+            echo "Repository $ECR_REPOSITORY already exists."
+          fi
 
       - name: Build, tag, and push image to Amazon ECR
-        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: example
-          IMAGE_TAG: latest
+          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
         run: |
           docker build -t example .
           docker tag example:latest ${{ secrets.AWS_ACCOUNT_NUM }}.dkr.ecr.ap-southeast-1.amazonaws.com/example:latest
           docker push ${{ secrets.AWS_ACCOUNT_NUM }}.dkr.ecr.ap-southeast-1.amazonaws.com/example:latest
-          aws lambda update-function-code --function-name example-lambda --image-uri ${{ secrets.AWS_ACCOUNT_NUM }}.dkr.ecr.ap-southeast-1.amazonaws.com/example:latest
