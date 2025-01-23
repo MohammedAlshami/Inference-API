@@ -29,11 +29,13 @@ jobs:
           pip install -r requirements.txt
           pip install httplib2==0.22.0
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       # Install jq
       - name: Install jq
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
+
       # Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -44,38 +46,40 @@ jobs:
 
       # Log in to Amazon ECR
       - name: Log in to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       # Ensure ECR repository exists
       - name: Ensure ECR repository exists
         run: |
           ecr_repo="flask-app"
-          # Check if the repository exists
           if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
-            echo "ECR repository $ecr_repo does not exist. Creating..."
             aws ecr create-repository --repository-name $ecr_repo
-          else
-            echo "ECR repository $ecr_repo already exists."
           fi
+
       # Build the Docker image
       - name: Build Docker image
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
-          # Build the Docker image
           docker build -t $ecr_repo:$image_tag .
-          # Tag the Docker image for ECR
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+
       # Push the Docker image to ECR
-      # Push Docker image to ECR
       - name: Push Docker image to ECR
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+
+      # Install Terraform
+      - name: Install Terraform
+        run: |
+          sudo apt-get update && sudo apt-get install -y wget unzip
+          wget https://releases.hashicorp.com/terraform/1.5.7/terraform_1.5.7_linux_amd64.zip
+          unzip terraform_1.5.7_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
 
       # Terraform init and apply
       - name: Terraform Init and Apply
