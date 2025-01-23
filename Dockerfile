@@ -1,14 +1,14 @@
-FROM public.ecr.aws/lambda/python:3.8
+FROM python:3.8
 
-# Install system dependencies for certain Python packages
-RUN yum install -y gcc python3-dev
+# Set the working directory
+WORKDIR /var/task
 
-# Copy function code
+# Copy the function code and requirements
 COPY app.py /var/task
+COPY requirements.txt /var/task
 
-# Copy requirements.txt and install dependencies
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt --target "/var/runtime"
+# Install the function's dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt --target "/var/task/venv"
 
 # Set the CMD to your handler
 CMD [ "app.handler" ]
