@@ -26,7 +26,7 @@ jobs:
 
       - name: Ensure ECR Repository Exists
         env:
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}  # Ensure this secret is set to your repository name
+          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
         run: |
           if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
             echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
@@ -38,8 +38,11 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}  # Ensure this secret is set to your actual repository name
+          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t example .
-          docker tag example:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+
+
