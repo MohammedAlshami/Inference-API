@@ -1,4 +1,4 @@
-name: Deploy to AWS Lambda
+name: Build and Push Docker Image to ECR
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Ensure ECR Repository Exists
         env:
-          ECR_REPOSITORY: your-repository-name  # Replace with your desired repository name
+          ECR_REPOSITORY: example  # Replace with your desired repository name
         run: |
           if ! aws ecr describe-repositories --repository-names $ECR_REPOSITORY > /dev/null 2>&1; then
             echo "Repository $ECR_REPOSITORY does not exist. Creating it now."
@@ -38,11 +38,8 @@ jobs:
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: your-repository-name  # Replace with your actual repository name
+          ECR_REPOSITORY: example  # Replace with your actual repository name
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-
-

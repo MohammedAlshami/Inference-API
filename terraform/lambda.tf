@@ -1,5 +1,4 @@
 resource "aws_lambda_function" "example" {
-  depends_on    = [null_resource.ecr_image]
   function_name = "example-lambda"
   architectures = ["arm64"]
   role          = aws_iam_role.lambda.arn
