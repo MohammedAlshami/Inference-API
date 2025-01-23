@@ -1,9 +1,9 @@
-name: Build, Deploy to ECR, and Update Lambda with Docker Image
+name: Build, Push to ECR, and Deploy with Terraform
 
 on:
   push:
     branches:
-      - main
+      - main  # Trigger on pushes to the main branch
 
 jobs:
   deploy:
@@ -14,100 +14,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      # Install dependencies
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install zappa
-          pip install httplib2==0.22.0
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      # Install jq
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-
-      # Configure AWS credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-1
-
       # Log in to Amazon ECR
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
+        with:
+          aws-region: ap-southeast-1
 
-      # Ensure ECR repository exists
-      - name: Ensure ECR repository exists
-        run: |
-          ecr_repo="flask-app"
-          if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
-            aws ecr create-repository --repository-name $ecr_repo
-          fi
-
-      # Build the Docker image
-      - name: Build Docker image
+      # Build and push the Docker image to ECR
+      - name: Build and Push Docker Image
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
-          docker build -t $ecr_repo:$image_tag .
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          
+          # Build Docker image
+          docker build -t $ecr_repo:$image_tag .
+
+          # Tag Docker image for ECR
           docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
-      # Push the Docker image to ECR
-      - name: Push Docker image to ECR
-        run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          # Push to ECR
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
 
-      # Deploy to Lambda
-      - name: Deploy to Lambda
-        run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          source venv/bin/activate
-          
-          # Ensure Docker image URI is valid
-          image_uri=$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-          if [[ -z "$image_uri" ]]; then
-            echo "Error: Docker image URI is empty."
-            exit 1
-          fi
-          
-          echo "Using Zappa to deploy or update Lambda function..."
-          
-          # Check if the Lambda function is already deployed
-          if zappa status | grep "active"; then
-            echo "Lambda function is already deployed. Updating..."
-            zappa update --docker-image-uri $image_uri
-          else
-            echo "Lambda function is not deployed. Deploying..."
-            zappa deploy --docker-image-uri $image_uri
+      # Deploy with Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0  # Replace with your preferred version
 
-      # Post-deployment check
-      - name: Validate Deployment
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
         run: |
-          source venv/bin/activate
-          api_url=$(zappa status | jq -r '.api_url')
-          echo "Testing deployed API endpoint: $api_url"
-          response=$(curl -s -o /dev/null -w "%{http_code}" $api_url)
-          if [ "$response" != "200" ]; then
-            echo "Error: API returned status code $response"
-            exit 1
-          fi
+          terraform apply -auto-approve \
+            -var="ecr_image_uri=$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"

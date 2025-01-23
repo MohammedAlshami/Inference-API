@@ -1,17 +1,4 @@
-# Use the official Python 3.11 slim image as the base
-FROM python:3.11-slim
-
-# Set the working directory inside the container
-WORKDIR /app
-
-# Copy all project files to the working directory
-COPY . .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Expose port 8080 (if running locally)
-EXPOSE 8080
-
-# Specify the command to run the Flask app
-CMD ["python", "app.py"]
+FROM public.ecr.aws/lambda/python:3.8
+RUN pip install requests pandas beautifulsoup4 lxml
+COPY my_lambda_function.py ./
+CMD ["my_lambda_function.lambda_handler"]
