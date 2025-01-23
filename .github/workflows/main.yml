@@ -69,34 +69,16 @@ jobs:
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
       # Push the Docker image to ECR
+      # Push Docker image to ECR
       - name: Push Docker image to ECR
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          # Push the Docker image to ECR
           docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+
+      # Terraform init and apply
+      - name: Terraform Init and Apply
         run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          
-          # Update Lambda function configuration to use the new image
-          aws lambda update-function-code \
-            --function-name inference-main \
-            --image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-          
-          # Wait for the update to complete
-          aws lambda wait function-updated --function-name inference-main
-          
-          # Get and print the API Gateway URL
-          echo "Getting function URL..."
-          api_url=$(aws apigateway get-rest-apis --query 'items[?name==`inference-main`].id' --output text)
-          if [ ! -z "$api_url" ]; then
-            echo "=================================================="
-            echo "Your API is deployed at:"
-            echo "https://$api_url.execute-api.ap-southeast-1.amazonaws.com/main"
-            echo "=================================================="
-          else
-            echo "Could not find API Gateway URL. Please check the AWS Console."
-          fi
+          terraform init
+          terraform apply -auto-approve
