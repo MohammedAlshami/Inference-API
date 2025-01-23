@@ -1,4 +1,4 @@
-name: Build, Push to ECR, and Deploy with Terraform
+name: Build, Deploy to ECR, and Update Lambda with Docker Image
 
 on:
   push:
@@ -14,39 +14,89 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install httplib2==0.22.0
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      # Install jq
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+      # Configure AWS credentials
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-southeast-1
+
       # Log in to Amazon ECR
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-        with:
-          aws-region: ap-southeast-1
 
-      # Build and push the Docker image to ECR
-      - name: Build and Push Docker Image
+      # Ensure ECR repository exists
+      - name: Ensure ECR repository exists
+        run: |
+          ecr_repo="flask-app"
+          # Check if the repository exists
+          if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
+            echo "ECR repository $ecr_repo does not exist. Creating..."
+            aws ecr create-repository --repository-name $ecr_repo
+          else
+            echo "ECR repository $ecr_repo already exists."
+          fi
+      # Build the Docker image
+      - name: Build Docker image
+        run: |
+          ecr_repo="flask-app"
+          image_tag="latest"
+          # Build the Docker image
+          docker build -t $ecr_repo:$image_tag .
+          # Tag the Docker image for ECR
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+      # Push the Docker image to ECR
+      - name: Push Docker image to ECR
+        run: |
+          ecr_repo="flask-app"
+          image_tag="latest"
+          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
+          # Push the Docker image to ECR
+          docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
         run: |
           ecr_repo="flask-app"
           image_tag="latest"
           aws_account_id=$(aws sts get-caller-identity --query Account --output text)
           
-          # Build Docker image
-          docker build -t $ecr_repo:$image_tag .
-
-          # Tag Docker image for ECR
-          docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-
-          # Push to ECR
-          docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-
-      # Deploy with Terraform
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0  # Replace with your preferred version
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="ecr_image_uri=$aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag"
+          # Update Lambda function configuration to use the new image
+          aws lambda update-function-code \
+            --function-name inference-main \
+            --image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          
+          # Wait for the update to complete
+          aws lambda wait function-updated --function-name inference-main
+          
+          # Get and print the API Gateway URL
+          echo "Getting function URL..."
+          api_url=$(aws apigateway get-rest-apis --query 'items[?name==`inference-main`].id' --output text)
+          if [ ! -z "$api_url" ]; then
+            echo "=================================================="
+            echo "Your API is deployed at:"
+            echo "https://$api_url.execute-api.ap-southeast-1.amazonaws.com/main"
+            echo "=================================================="
+          else
+            echo "Could not find API Gateway URL. Please check the AWS Console."
+          fi
