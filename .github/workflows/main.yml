@@ -1,106 +1,63 @@
-name: Build, Deploy to ECR, and Update Lambda with Docker Image
+name: Build and Deploy Lambda
 
 on:
   push:
     branches:
-      - main  # Trigger on pushes to the main branch
+      - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code
+      # Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      # Install dependencies
-      - name: Install dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install zappa
-          pip install httplib2==0.22.0
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      # Install jq
-      - name: Install jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-      # Configure AWS credentials
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-southeast-1
-
       # Log in to Amazon ECR
-      - name: Log in to Amazon ECR
+      - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
-      # Ensure ECR repository exists
-      - name: Ensure ECR repository exists
-        run: |
-          ecr_repo="flask-app"
-          # Check if the repository exists
-          if ! aws ecr describe-repositories --repository-names $ecr_repo > /dev/null 2>&1; then
-            echo "ECR repository $ecr_repo does not exist. Creating..."
-            aws ecr create-repository --repository-name $ecr_repo
-          else
-            echo "ECR repository $ecr_repo already exists."
-          fi
       # Build the Docker image
       - name: Build Docker image
         run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          # Build the Docker image
-          docker build -t $ecr_repo:$image_tag .
-          # Tag the Docker image for ECR
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          docker tag $ecr_repo:$image_tag $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          docker build -t my-lambda-image .
+
+      # Tag the Docker image
+      - name: Tag Docker image
+        run: |
+          IMAGE_TAG="my-lambda-image:latest"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+
       # Push the Docker image to ECR
       - name: Push Docker image to ECR
         run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          # Push the Docker image to ECR
-          docker push $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
+          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+          REGION="ap-southeast-1"
+          REPO_NAME="my-lambda-repo"
+          IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${REPO_NAME}:latest"
 
-      # Deploy to Lambda and get function URL
-      - name: Deploy to Lambda and get URL
+          # Create the repository if it doesn't exist
+          aws ecr describe-repositories --repository-names ${REPO_NAME} || \
+          aws ecr create-repository --repository-name ${REPO_NAME}
+
+          # Tag and push the image
+          docker tag my-lambda-image:latest $IMAGE_URI
+          docker push $IMAGE_URI
+
+        env:
+          AWS_REGION: ap-southeast-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # Deploy the Lambda function using Terraform
+      - name: Deploy Lambda using Terraform
         run: |
-          ecr_repo="flask-app"
-          image_tag="latest"
-          aws_account_id=$(aws sts get-caller-identity --query Account --output text)
-          
-          # Update Lambda function configuration to use the new image
-          aws lambda update-function-code \
-            --function-name inference-main \
-            --image-uri $aws_account_id.dkr.ecr.ap-southeast-1.amazonaws.com/$ecr_repo:$image_tag
-          
-          # Wait for the update to complete
-          aws lambda wait function-updated --function-name inference-main
-          
-          # Get and print the API Gateway URL
-          echo "Getting function URL..."
-          api_url=$(aws apigateway get-rest-apis --query 'items[?name==`inference-main`].id' --output text)
-          if [ ! -z "$api_url" ]; then
-            echo "=================================================="
-            echo "Your API is deployed at:"
-            echo "https://$api_url.execute-api.ap-southeast-1.amazonaws.com/main"
-            echo "=================================================="
-          else
-            echo "Could not find API Gateway URL. Please check the AWS Console."
-          fi
+          cd terraform
+          terraform init
+          terraform apply -auto-approve
+        env:
+          AWS_REGION: ap-southeast-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
