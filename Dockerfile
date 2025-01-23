@@ -1,14 +1,17 @@
-FROM python:3.8
+# Use an official Python 3.11 runtime as a parent image
+FROM python:3.11-slim
 
-# Set the working directory
-WORKDIR /var/task
+# Set the working directory in the container
+WORKDIR /app
 
-# Copy the function code and requirements
-COPY app.py /var/task
-COPY requirements.txt /var/task
+# Copy the current directory contents into the container
+COPY . /app
 
-# Install the function's dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt --target "/var/task/venv"
+# Install dependencies from requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set the CMD to your handler
+# Make port 5000 available to the world outside this container
+EXPOSE 5000
+
+# Run app.py when the container launches
 CMD [ "app.handler" ]
