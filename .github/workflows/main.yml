@@ -9,6 +9,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [12.x]
+
     steps:
       # Checkout code
       - name: Checkout code
@@ -36,9 +40,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      # Set up Terraform
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
+      # Install Terraform
+      - name: Install Terraform
+        uses: little-core-labs/install-terraform@v2.0.0
+        with:
+          version: 0.13.4
 
       # Configure AWS credentials
       - name: Configure AWS credentials
@@ -88,4 +94,5 @@ jobs:
       - name: Terraform Init and Apply
         run: |
           terraform init
+          terraform plan
           terraform apply -auto-approve
