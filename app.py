@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
-from InferencePipeline import InferencePipeline
+# from InferencePipeline import InferencePipeline
 
 app = Flask(__name__)
 
