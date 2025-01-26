@@ -99,18 +99,18 @@ jobs:
 
       - name: Update Repository URL with Lambda Function URL
         env:
-          FUNCTION_NAME: my-lambda-function  # Replace with your Lambda function name
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for API access
+          FUNCTION_NAME: my-lambda-function  # Replace with your Lambda name
+          GH_PAT: ${{ secrets.GH_PAT }}  # PAT with repo permissions
         run: |
-          # Get the Lambda function URL
+          # Get the Lambda URL
           FUNCTION_URL=$(aws lambda get-function-url-config --function-name $FUNCTION_NAME --query 'FunctionUrl' --output text)
-
-          # Update the repository URL using GitHub API
+          
+          # Update the GitHub repo URL using a PAT
           curl -X PATCH \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $GH_PAT" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/${{ github.repository }} \
-            -d '{"homepage":"'"$FUNCTION_URL"'"}'
+            -d "{\"homepage\":\"$FUNCTION_URL\"}"
 
-          echo "Repository URL updated to: $FUNCTION_URL"
+          echo "Updated repo URL to: $FUNCTION_URL"
