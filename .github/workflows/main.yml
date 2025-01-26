@@ -69,6 +69,6 @@ jobs:
           FUNCTION_NAME: my-lambda-function  # Replace with your Lambda function name
         run: |
           echo "Enabling function URL for Lambda function $FUNCTION_NAME"
-          FUNCTION_URL=$(aws lambda create-function-url --function-name $FUNCTION_NAME --auth-type NONE --query 'FunctionUrl' --output text)
+          FUNCTION_URL=$(aws lambda create-function-url-config --function-name $FUNCTION_NAME --auth-type NONE --query 'FunctionUrl' --output text)
           echo "Function URL is: $FUNCTION_URL"
           echo "Function URL: $FUNCTION_URL" >> $GITHUB_ENV
