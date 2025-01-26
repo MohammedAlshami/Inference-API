@@ -71,4 +71,13 @@ jobs:
           echo "Enabling function URL for Lambda function $FUNCTION_NAME"
           FUNCTION_URL=$(aws lambda create-function-url-config --function-name $FUNCTION_NAME --auth-type NONE --query 'FunctionUrl' --output text)
           echo "Function URL is: $FUNCTION_URL"
-          echo "Function URL: $FUNCTION_URL" >> $GITHUB_ENV
+      - name: Add Public Access Permission to Lambda Function
+        env:
+          FUNCTION_NAME: my-lambda-function
+        run: |
+          aws lambda add-permission \
+            --function-name $FUNCTION_NAME \
+            --action lambda:InvokeFunctionUrl \
+            --principal '*' \
+            --statement-id FunctionURLAllowPublicAccess \
+            --function-url-auth-type NONE
