@@ -1,17 +1,13 @@
-# Use an official Python 3.11 runtime as a parent image
-FROM python:3.11-slim
+FROM public.ecr.aws/lambda/python:3.11
 
-# Set the working directory in the container
-WORKDIR /app
+# Copy requirements.txt
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Copy the current directory contents into the container
-COPY . /app
+# Install the specified packages
+RUN pip install -r requirements.txt
 
-# Install dependencies from requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy function code
+COPY my_lambda_function.py ${LAMBDA_TASK_ROOT}
 
-# Make port 5000 available to the world outside this container
-EXPOSE 5000
-
-# Run app.py when the container launches
-CMD ["python", "app.py"]
+# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+CMD ["my_lambda_function.lambda_handler"]
