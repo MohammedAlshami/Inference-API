@@ -12,4 +12,4 @@ COPY app.py InferencePipeline.py ${LAMBDA_TASK_ROOT}/
 COPY models/ ${LAMBDA_TASK_ROOT}/models/
 
 # Set the CMD to your handler
-CMD ["app.app"]
+CMD ["lambda_handler.lambda_handler"]
