@@ -96,3 +96,21 @@ jobs:
           else
             echo "Permission already exists."
           fi
+
+      - name: Update Repository URL with Lambda Function URL
+        env:
+          FUNCTION_NAME: my-lambda-function  # Replace with your Lambda function name
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token for API access
+        run: |
+          # Get the Lambda function URL
+          FUNCTION_URL=$(aws lambda get-function-url-config --function-name $FUNCTION_NAME --query 'FunctionUrl' --output text)
+
+          # Update the repository URL using GitHub API
+          curl -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }} \
+            -d '{"homepage":"'"$FUNCTION_URL"'"}'
+
+          echo "Repository URL updated to: $FUNCTION_URL"
