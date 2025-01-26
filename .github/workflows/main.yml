@@ -56,7 +56,7 @@ jobs:
               --function-name $FUNCTION_NAME \
               --package-type Image \
               --code ImageUri=$IMAGE_URI \
-              --role arn:aws:iam::123456789012:role/lambda-execution-role  # Replace with your Lambda execution role ARN
+              --role arn:aws:iam::294980836836:role/lambda-execution-role  # Replace with your Lambda execution role ARN
           else
             echo "Lambda function $FUNCTION_NAME exists. Updating it now."
             aws lambda update-function-code \
