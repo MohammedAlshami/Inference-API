@@ -1,13 +1,15 @@
 FROM public.ecr.aws/lambda/python:3.11
 
-# Copy requirements.txt
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
+# Install system dependencies for OpenCV and other libraries
+RUN yum install -y mesa-libGL && yum clean all
 
-# Install the specified packages
+# Copy requirements first to leverage Docker cache
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
 RUN pip install -r requirements.txt
 
-# Copy function code
-COPY my_lambda_function.py ${LAMBDA_TASK_ROOT}
+# Copy all Python files and models
+COPY app.py InferencePipeline.py ${LAMBDA_TASK_ROOT}/
+COPY models/ ${LAMBDA_TASK_ROOT}/models/
 
-# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
-CMD ["my_lambda_function.lambda_handler"]
+# Set the CMD to your handler
+CMD ["app.app"]
