@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -5,30 +6,17 @@ from InferencePipeline import InferencePipeline
 
 app = Flask(__name__)
 
-# Enable CORS with specific settings
-CORS(app, resources={
-    r"/*": {
-        "origins": "*",  # Allow all origins
-        "methods": ["POST", "OPTIONS", "GET"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+# Enable CORS
+CORS(app)
 
-# Add CORS headers to all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')  # Allow all origins
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS,GET')
-    return response
+# Load environment variables
+load_dotenv()
 
-# Rest of your code remains the same
-@app.route('/detect', methods=['POST', 'OPTIONS'])
+# Initialize inference pipeline
+inferencePipeline = InferencePipeline()
+
+@app.route('/detect', methods=['POST'])
 def detect():
-    # Handle preflight request
-    if request.method == 'OPTIONS':
-        return '', 204
-        
     data = request.get_json()
     media_url = data.get('media_url')
     model_type = data.get('model_type')
@@ -42,3 +30,4 @@ def detect():
 @app.route('/')
 def home():
     return 'WhatsApp Bot is running!'
+ 
