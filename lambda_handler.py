@@ -18,18 +18,29 @@
 
 
 import awsgi
-from flask import (
-    Flask,
-    jsonify,
-)
+from flask import Flask, jsonify
+import json
 
 app = Flask(__name__)
-
 
 @app.route('/')
 def index():
     return jsonify(status=200, message='Hello Flask!')
 
-
 def lambda_handler(event, context):
+    # Debug logging
+    print(f"Received event: {json.dumps(event)}")
+    
+    # Check if this is a direct Lambda invocation
+    if 'httpMethod' not in event:
+        # If invoked directly, return a simple response
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'status': 200,
+                'message': 'Hello Flask! (Direct Lambda invocation)'
+            })
+        }
+    
+    # Handle normal API Gateway requests
     return awsgi.response(app, event, context)
