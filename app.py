@@ -7,7 +7,7 @@ from InferencePipeline import InferencePipeline
 app = Flask(__name__)
 
 # Enable CORS
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Load environment variables
 load_dotenv()
@@ -15,7 +15,7 @@ load_dotenv()
 # Initialize inference pipeline
 inferencePipeline = InferencePipeline()
 
-@app.route('/detect', methods=['POST'])
+@app.route('/detect', methods=['POST', 'GET'])
 def detect():
     data = request.get_json()
     media_url = data.get('media_url')
