@@ -28,19 +28,7 @@ def index():
     return jsonify(status=200, message='Hello Flask!')
 
 def lambda_handler(event, context):
-    # Debug logging
-    print(f"Received event: {json.dumps(event)}")
-    
-    # Check if this is a direct Lambda invocation
-    if 'httpMethod' not in event:
-        # If invoked directly, return a simple response
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'status': 200,
-                'message': 'Hello Flask! (Direct Lambda invocation)'
-            })
-        }
-    
-    # Handle normal API Gateway requests
-    return awsgi.response(app, event, context)
+    event['httpMethod'] = event['requestContext']['http']['method']
+    event['path'] = event['requestContext']['http']['path']
+    event['queryStringParameters'] = event.get('queryStringParameters', {})
+    return awsgi.response(app, event, context) 
