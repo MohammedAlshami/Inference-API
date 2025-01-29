@@ -5,53 +5,22 @@ import json
 
 def lambda_handler(event, context):
     try:
-        # Handle preflight requests (CORS preflight)
-        if event["requestContext"]["http"]["method"] == "OPTIONS":
-            return {
-                "statusCode": 200,
-                "headers": {
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization"
-                },
-                "body": json.dumps({"message": "CORS preflight success"})
-            }
-
         # Standard API requests
         event["httpMethod"] = event["requestContext"]["http"]["method"]
         event["path"] = event["requestContext"]["http"]["path"]
         event["queryStringParameters"] = event.get("queryStringParameters", {})
 
         response = awsgi.response(app, event, context)
-
-        # Ensure CORS headers are set only once
-        if "headers" not in response:
-            response["headers"] = {}
-
-        response["headers"]["Access-Control-Allow-Origin"] = "*"
-        response["headers"]["Access-Control-Allow-Methods"] = "OPTIONS, GET, POST"
-        response["headers"]["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-
         return response
 
     except KeyError as e:
         return {
             "statusCode": 400,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization"
-            },
             "body": json.dumps({"error": f"Missing key: {str(e)}"})
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization"
-            },
             "body": json.dumps({"error": f"An unexpected error occurred: {str(e)}"})
         }

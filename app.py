@@ -1,13 +1,9 @@
 import os
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from dotenv import load_dotenv
 from InferencePipeline import InferencePipeline
 
 app = Flask(__name__)
-
-# Enable CORS
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Load environment variables
 load_dotenv()
@@ -30,4 +26,3 @@ def detect():
 @app.route('/')
 def home():
     return 'WhatsApp Bot is running!'
- 
