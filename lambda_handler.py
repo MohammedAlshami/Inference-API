@@ -31,5 +31,5 @@ def index():
     return jsonify(status=200, message='Hello Flask!')
 
 
-def handler(event, context):
+def lambda_handler(event, context):
     return awsgi.response(app, event, context)
