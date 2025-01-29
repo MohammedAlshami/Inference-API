@@ -8,8 +8,8 @@ COPY requirements.txt ${LAMBDA_TASK_ROOT}
 RUN pip install -r requirements.txt
 
 # Copy all Python files and models
-COPY app.py lambda_handler.py InferencePipeline.py ${LAMBDA_TASK_ROOT}/
+COPY app.py InferencePipeline.py ${LAMBDA_TASK_ROOT}/
 COPY models/ ${LAMBDA_TASK_ROOT}/models/
 
 # Set the CMD to your handler
-CMD ["lambda_handler.lambda_handler"]
+CMD ["app.lambda_handler"]
