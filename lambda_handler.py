@@ -24,7 +24,10 @@ def lambda_handler(event, context):
 
         response = awsgi.response(app, event, context)
 
-        # Add CORS headers
+        # Ensure CORS headers are set only once
+        if "headers" not in response:
+            response["headers"] = {}
+
         response["headers"]["Access-Control-Allow-Origin"] = "*"
         response["headers"]["Access-Control-Allow-Methods"] = "OPTIONS, GET, POST"
         response["headers"]["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
@@ -34,21 +37,21 @@ def lambda_handler(event, context):
     except KeyError as e:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": f"Missing key: {str(e)}"}),
             "headers": {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
                 "Access-Control-Allow-Headers": "Content-Type, Authorization"
-            }
+            },
+            "body": json.dumps({"error": f"Missing key: {str(e)}"})
         }
 
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": f"An unexpected error occurred: {str(e)}"}),
             "headers": {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "OPTIONS, GET, POST",
                 "Access-Control-Allow-Headers": "Content-Type, Authorization"
-            }
+            },
+            "body": json.dumps({"error": f"An unexpected error occurred: {str(e)}"})
         }
