@@ -10,7 +10,7 @@ def lambda_handler(event, context):
             'statusCode': 204,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, access-control-allow-origin',
                 'Access-Control-Allow-Methods': 'POST,OPTIONS,GET'
             }
         }
@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         
     response['headers'].update({
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, access-control-allow-origin',
         'Access-Control-Allow-Methods': 'POST,OPTIONS,GET'
     })
     
