@@ -29,4 +29,5 @@ def detect():
 
 @app.route('/')
 def home():
-    return 'WhatsApp Bot is running!'
+    return jsonify(status=200, message='Hello Flask!')
+ 
