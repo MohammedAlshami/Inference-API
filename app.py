@@ -7,7 +7,7 @@ from InferencePipeline import InferencePipeline
 app = Flask(__name__)
 
 # Enable CORS
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 # Load environment variables
 load_dotenv()
