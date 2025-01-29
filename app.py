@@ -7,7 +7,11 @@ from InferencePipeline import InferencePipeline
 app = Flask(__name__)
 
 # Enable CORS
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+from flask_cors import CORS
+
+# Enable CORS with explicit headers
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Origin"])
 
 # Load environment variables
 load_dotenv()
@@ -15,17 +19,28 @@ load_dotenv()
 # Initialize inference pipeline
 inferencePipeline = InferencePipeline()
 
-@app.route('/detect', methods=['POST', 'GET'])
+from flask import make_response
+
+@app.route('/detect', methods=['POST', 'OPTIONS'])
 def detect():
+    if request.method == 'OPTIONS':
+        # Preflight response for CORS
+        response = make_response()
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Access-Control-Allow-Origin"
+        return response, 200
+    
     data = request.get_json()
     media_url = data.get('media_url')
     model_type = data.get('model_type')
     
-    print(f"Model Type: {model_type}")
-    
-    # Process and upload using inference pipeline
     detection_result_img = inferencePipeline.process_and_upload(media_url, model_type)
-    return jsonify({'detection_result_img': detection_result_img})
+    
+    response = jsonify({'detection_result_img': detection_result_img})
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
 
 @app.route('/')
 def home():
