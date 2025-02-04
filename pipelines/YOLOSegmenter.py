@@ -46,7 +46,7 @@ class YOLOSegmenter:
             segmented_image = self.add_legend(segmented_image, measurements)
         
         if not measurements:
-            return {"error": "No objects detected"}
+            return {"error": "No objects detected", "input": image_path}
         
         # Convert the image to base64
         _, buffer = cv2.imencode(".jpg", segmented_image)
