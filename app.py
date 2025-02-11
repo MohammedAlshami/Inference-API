@@ -1,44 +1,70 @@
-import os
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
 from dotenv import load_dotenv
-# from pipelines.InferencePipeline import InferencePipeline
 from pipelines.YOLOSegmenter import YOLOSegmenter
-
-app = Flask(__name__)
+from pipelines.Detection import Detection
 
 # Load environment variables
 load_dotenv()
 
-# Initialize inference pipeline
-# inferencePipeline = InferencePipeline()
+app = FastAPI(title="Fruit Detection API")
 
-# @app.route('/detect', methods=['POST', 'GET'])
-# def detect():
-#     data = request.get_json()
-#     media_url = data.get('media_url')
-#     model_type = data.get('model_type')
-    
-#     print(f"Model Type: {model_type}")
-    
-#     # Process and upload using inference pipeline
-#     detection_result_img = inferencePipeline.process_and_upload(media_url, model_type)
-#     return jsonify({'detection_result_img': detection_result_img})
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route('/segment', methods=['POST'])
-def segment():
-    data = request.get_json()
-    image_path = data.get('image_path')
-    model_type = data.get('model_type')
-    distance = data.get('distance', 30)  # Default distance is 30cm
-    confidence = data.get('confidence', 0.3)
-    
-    segmenter = YOLOSegmenter(model_type)
-    result = segmenter.process_image(image_path, segmentation=True, ripeness=True, conf=confidence, legend=True, distance_cm=distance)
-    return jsonify(result)
+# Initialize detector
+detector = Detection()
 
-@app.route('/')
-def home():
-    return 'WhatsApp Bot is running!'
+# Pydantic models for request validation
+class DetectionRequest(BaseModel):
+    image: str
+    fruit_type: str
 
-if __name__ == '__main__':
-    app.run(debug=True)
+class SegmentationRequest(BaseModel):
+    image_path: str
+    model_type: str
+    distance: Optional[float] = 30.0
+    confidence: Optional[float] = 0.3
+
+class ErrorResponse(BaseModel):
+    status: str = "error"
+    message: str
+
+@app.post("/detect")
+async def detect(request: DetectionRequest):
+    try:
+        # Process the image with specified fruit type
+        results = detector.process_image(request.image, request.fruit_type)
+        return results
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/segment")
+async def segment(request: SegmentationRequest):
+    try:
+        segmenter = YOLOSegmenter(request.model_type)
+        result = segmenter.process_image(
+            request.image_path,
+            segmentation=True,
+            ripeness=True,
+            conf=request.confidence,
+            legend=True,
+            distance_cm=request.distance
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+async def home():
+    return {"message": "WhatsApp Bot is running!"}
