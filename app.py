@@ -8,8 +8,15 @@ from pipelines.Detection import Detection
 app = Flask(__name__)
 
 # Enable CORS for all origins
-CORS(app, resources={r"/*": {"origins": "*"}})
-
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:3000", "http://drangue.ai/"],  # Add other origins as needed
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
+    }
+})
 # Load environment variables
 load_dotenv()
 
