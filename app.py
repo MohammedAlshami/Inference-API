@@ -1,81 +1,64 @@
-# app.py
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-from mangum import Mangum
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from dotenv import load_dotenv
 from pipelines.YOLOSegmenter import YOLOSegmenter
 from pipelines.Detection import Detection
 
+app = Flask(__name__)
+
+# Enable CORS for all origins
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(
-    title="Fruit Detection API",
-    description="API for fruit detection and ripeness analysis",
-    version="1.0.0"
-)
-
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize detector
 detector = Detection()
 
-class DetectionRequest(BaseModel):
-    image: str
-    fruit_type: str
-
-class SegmentationRequest(BaseModel):
-    image_path: str
-    model_type: str
-    distance: Optional[float] = 30.0
-    confidence: Optional[float] = 0.3
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"message": str(exc)},
-    )
-
-@app.post("/detect")
-async def detect(request: DetectionRequest):
+@app.route('/detect', methods=['POST'])
+def detect():
+    # Get JSON data from request
+    data = request.get_json()
+    
+    # Validate required fields
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+        
+    image_input = data.get('image')
+    fruit_type = data.get('fruit_type')
+    
+    if not image_input:
+        return jsonify({'status': 'error', 'message': 'No image provided'}), 400
+    
+    if not fruit_type:
+        return jsonify({'status': 'error', 'message': 'No fruit type specified'}), 400
+        
     try:
-        results = detector.process_image(request.image, request.fruit_type)
-        return results
+        # Process the image with specified fruit type
+        results = detector.process_image(image_input, fruit_type)
+        return jsonify(results)
+        
     except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        return jsonify({'status': 'error', 'message': str(ve)}), 400
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.post("/segment")
-async def segment(request: SegmentationRequest):
-    try:
-        segmenter = YOLOSegmenter(request.model_type)
-        result = segmenter.process_image(
-            request.image_path,
-            segmentation=True,
-            ripeness=True,
-            conf=request.confidence,
-            legend=True,
-            distance_cm=request.distance
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.route('/segment', methods=['POST'])
+def segment():
+    data = request.get_json()
+    image_path = data.get('image_path')
+    model_type = data.get('model_type')
+    distance = data.get('distance', 30)  # Default distance is 30cm
+    confidence = data.get('confidence', 0.3)
+    
+    segmenter = YOLOSegmenter(model_type)
+    result = segmenter.process_image(image_path, segmentation=True, ripeness=True, conf=confidence, legend=True, distance_cm=distance)
+    return jsonify(result)
 
-@app.get("/")
-async def root():
-    return {"message": "Fruit Detection API is running!"}
+@app.route('/')
+def home():
+    return 'WhatsApp Bot is running!'
 
-# Create handler for AWS Lambda
-handler = Mangum(app)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

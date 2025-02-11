@@ -1,20 +1,26 @@
-from app import handler
+from app import app
 import awsgi
 from flask import Flask, jsonify
 import json
 
 def lambda_handler(event, context):
-    """
-    AWS Lambda handler function that processes API Gateway requests
-    using the Mangum handler.
-    """
     try:
-        response = handler(event, context)
+        # Standard API requests
+        event["httpMethod"] = event["requestContext"]["http"]["method"]
+        event["path"] = event["requestContext"]["http"]["path"]
+        event["queryStringParameters"] = event.get("queryStringParameters", {})
+
+        response = awsgi.response(app, event, context)
         return response
+
+    except KeyError as e:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": f"Missing key: {str(e)}"})
+        }
+
     except Exception as e:
         return {
             "statusCode": 500,
-            "body": {
-                "error": f"An unexpected error occurred: {str(e)}"
-            }
+            "body": json.dumps({"error": f"An unexpected error occurred: {str(e)}"})
         }
