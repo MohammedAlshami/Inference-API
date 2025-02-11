@@ -1,3 +1,4 @@
+# app.py
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,7 +30,6 @@ app.add_middleware(
 # Initialize detector
 detector = Detection()
 
-# Pydantic models for request validation
 class DetectionRequest(BaseModel):
     image: str
     fruit_type: str
@@ -78,4 +78,4 @@ async def root():
     return {"message": "Fruit Detection API is running!"}
 
 # Create handler for AWS Lambda
-handler = Mangum(app, lifespan="off")
+handler = Mangum(app)
