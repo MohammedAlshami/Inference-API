@@ -1,4 +1,4 @@
-from app import app
+from app import handler
 import awsgi
 from flask import Flask, jsonify
 import json
@@ -10,7 +10,7 @@ def lambda_handler(event, context):
         event["path"] = event["requestContext"]["http"]["path"]
         event["queryStringParameters"] = event.get("queryStringParameters", {})
 
-        response = awsgi.response(app, event, context)
+        response = awsgi.response(handler, event, context)
         return response
 
     except KeyError as e:

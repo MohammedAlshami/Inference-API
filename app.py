@@ -1,7 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+from mangum import Mangum
 from dotenv import load_dotenv
 from pipelines.YOLOSegmenter import YOLOSegmenter
 from pipelines.Detection import Detection
@@ -9,7 +11,11 @@ from pipelines.Detection import Detection
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(title="Fruit Detection API")
+app = FastAPI(
+    title="Fruit Detection API",
+    description="API for fruit detection and ripeness analysis",
+    version="1.0.0"
+)
 
 # Configure CORS
 app.add_middleware(
@@ -34,14 +40,16 @@ class SegmentationRequest(BaseModel):
     distance: Optional[float] = 30.0
     confidence: Optional[float] = 0.3
 
-class ErrorResponse(BaseModel):
-    status: str = "error"
-    message: str
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"message": str(exc)},
+    )
 
 @app.post("/detect")
 async def detect(request: DetectionRequest):
     try:
-        # Process the image with specified fruit type
         results = detector.process_image(request.image, request.fruit_type)
         return results
     except ValueError as ve:
@@ -66,5 +74,8 @@ async def segment(request: SegmentationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
-async def home():
-    return {"message": "WhatsApp Bot is running!"}
+async def root():
+    return {"message": "Fruit Detection API is running!"}
+
+# Create handler for AWS Lambda
+handler = Mangum(app, lifespan="off")
