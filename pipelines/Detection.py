@@ -10,7 +10,7 @@ class Detection:
     MODEL_PATHS = {
         "palm": {
             "segmentation": "models/palm/pt/palm_segmentation.pt",
-            "ripeness": "models/palm/pt/palm_ripe.pt"
+            "ripeness": "models/palm/pt/palm.onnx"
         },
         "pineapple": {
             "segmentation": "models/pineapple/pt/pineapple_segmentation.pt",
@@ -147,9 +147,10 @@ class Detection:
 
             # Define classes for each fruit type
             classes = {
-                "palm": {0: 'Ripe', 1: 'Semi_Ripe', 2: 'Un_Ripe'},
+                "palm": {0: "abnormal",  1: "ripe",  2: "underripe",  3: "ripe",  4: "unripe",  5: "overripe"},
                 "pineapple": {0: 'Ripe', 1: 'Semi_Ripe', 2: 'Un_Ripe'}
             }
+
 
             # Load image based on input type
             if isinstance(image_input, str):
@@ -201,15 +202,15 @@ class Detection:
             if fruit_type not in self.models:
                 raise ValueError(f"Unsupported fruit type: {fruit_type}")
 
-            # Perform both operations
-            seg_results = self.segment_image(image_input, fruit_type)
-            ripe_results = self.detect_ripeness(image_input, fruit_type)
+            # Skip segmentation and return original image
+            # seg_results = self.segment_image(image_input, fruit_type)  # Commented out
             
-            # Combine results
+            ripe_results = self.detect_ripeness(image_input, fruit_type)
+
             return {
                 'status': 'success',
-                'detection_result_img': seg_results['segmented_image'],
-                'num_objects': seg_results['num_objects'],
+                'detection_result_img': image_input,  # Return original image
+                'num_objects': 0,  # Since segmentation is skipped, no object count
                 'ripeness': ripe_results['ripeness'],
                 'confidence': ripe_results['confidence']
             }
