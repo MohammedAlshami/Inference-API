@@ -86,58 +86,58 @@ class Detection:
             raise ValueError(f"Error encoding image to base64: {str(e)}")
 
 
-    def segment_image(self, image_input, fruit_type):
-        """Perform segmentation on the input image"""
-        try:
-            if fruit_type not in self.models:
-                raise ValueError(f"Unsupported fruit type: {fruit_type}")
+    # def segment_image(self, image_input, fruit_type):
+    #     """Perform segmentation on the input image"""
+    #     try:
+    #         if fruit_type not in self.models:
+    #             raise ValueError(f"Unsupported fruit type: {fruit_type}")
 
-            # Load image based on input type
-            if isinstance(image_input, str):
-                if image_input.startswith(('http://', 'https://')):
-                    img = self._load_image_from_url(image_input)
-                else:
-                    img = self._load_image_from_base64(image_input)
-            else:
-                raise ValueError("Image input must be URL or base64 string")
+    #         # Load image based on input type
+    #         if isinstance(image_input, str):
+    #             if image_input.startswith(('http://', 'https://')):
+    #                 img = self._load_image_from_url(image_input)
+    #             else:
+    #                 img = self._load_image_from_base64(image_input)
+    #         else:
+    #             raise ValueError("Image input must be URL or base64 string")
 
-            # Validate image dimensions
-            self._validate_image(img)
-            height, width = img.shape[:2]
+    #         # Validate image dimensions
+    #         self._validate_image(img)
+    #         height, width = img.shape[:2]
 
-            # Run segmentation with appropriate model
-            results = self.models[fruit_type]["segmentation"](img)
+    #         # Run segmentation with appropriate model
+    #         results = self.models[fruit_type]["segmentation"](img)
             
-            # Draw segmentation masks on the image
-            for r in results:
-                masks = r.masks
-                if masks is not None:
-                    for mask in masks:
-                        # Convert mask to numpy array and validate
-                        mask_array = mask.data.cpu().numpy()
-                        if mask_array.size == 0:
-                            continue
+    #         # Draw segmentation masks on the image
+    #         for r in results:
+    #             masks = r.masks
+    #             if masks is not None:
+    #                 for mask in masks:
+    #                     # Convert mask to numpy array and validate
+    #                     mask_array = mask.data.cpu().numpy()
+    #                     if mask_array.size == 0:
+    #                         continue
                             
-                        # Ensure mask dimensions match image dimensions
-                        if mask_array.shape[-2:] != (height, width):
-                            mask_array = cv2.resize(mask_array.squeeze(), (width, height))
-                            mask_array = mask_array[np.newaxis, :, :]
+    #                     # Ensure mask dimensions match image dimensions
+    #                     if mask_array.shape[-2:] != (height, width):
+    #                         mask_array = cv2.resize(mask_array.squeeze(), (width, height))
+    #                         mask_array = mask_array[np.newaxis, :, :]
 
-                        # Create and apply color mask
-                        color_mask = np.zeros_like(img)
-                        mask_array = mask_array.squeeze()
-                        color_mask[mask_array > 0.5] = [0, 255, 0]  # Green overlay
-                        img = cv2.addWeighted(img, 0.7, color_mask, 0.3, 0)
+    #                     # Create and apply color mask
+    #                     color_mask = np.zeros_like(img)
+    #                     mask_array = mask_array.squeeze()
+    #                     color_mask[mask_array > 0.5] = [0, 255, 0]  # Green overlay
+    #                     img = cv2.addWeighted(img, 0.7, color_mask, 0.3, 0)
 
-            # Convert the segmented image to base64
-            img_base64 = self._image_to_base64(img)
+    #         # Convert the segmented image to base64
+    #         img_base64 = self._image_to_base64(img)
             
-            return {
-                'segmented_image': img_base64,
-                'num_objects': len(results[0].boxes) if results[0].boxes is not None else 0
-            }
-        except Exception as e:
-            raise ValueError(f"Segmentation error: {str(e)}")
+    #         return {
+    #             'segmented_image': img_base64,
+    #             'num_objects': len(results[0].boxes) if results[0].boxes is not None else 0
+    #         }
+    #     except Exception as e:
+    #         raise ValueError(f"Segmentation error: {str(e)}")
 
     def detect_ripeness(self, image_input, fruit_type):
         """Detect ripeness of the fruit in the image"""
