@@ -3,14 +3,34 @@ import awsgi
 from flask import Flask, jsonify
 import json
 
+def get_allowed_origin(event):
+    # Get origin from headers
+    headers = event.get("headers", {})
+    origin = headers.get("origin", headers.get("Origin", ""))
+    
+    # List of allowed origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "https://www.drangue.ai",
+        "https://drangue.ai",
+        "https://palm.drangue.ai",
+        "https://pineapple.drangue.ai"
+    ]
+    
+    # Return the origin if it's allowed, otherwise return default
+    return origin if origin in allowed_origins else allowed_origins[0]
+
 def lambda_handler(event, context):
     try:
+        # Get the appropriate origin for CORS headers
+        allowed_origin = get_allowed_origin(event)
+        
         # Handle OPTIONS requests for CORS
         if event["requestContext"]["http"]["method"] == "OPTIONS":
             return {
                 "statusCode": 204,
                 "headers": {
-                    "Access-Control-Allow-Origin": origin if origin in ["http://localhost:3000", "http://drangue.ai"] else "http://localhost:3000",
+                    "Access-Control-Allow-Origin": allowed_origin,
                     "Access-Control-Allow-Headers": "Content-Type,Authorization",
                     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
                     "Access-Control-Allow-Credentials": "true",
@@ -30,7 +50,7 @@ def lambda_handler(event, context):
             response["headers"] = {}
             
         response["headers"].update({
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": allowed_origin,
             "Access-Control-Allow-Credentials": "true"
         })
         
@@ -40,7 +60,7 @@ def lambda_handler(event, context):
         return {
             "statusCode": 400,
             "headers": {
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": allowed_origin,
                 "Access-Control-Allow-Credentials": "true"
             },
             "body": json.dumps({"error": f"Missing key: {str(e)}"})
@@ -50,7 +70,7 @@ def lambda_handler(event, context):
         return {
             "statusCode": 500,
             "headers": {
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": allowed_origin,
                 "Access-Control-Allow-Credentials": "true"
             },
             "body": json.dumps({"error": f"An unexpected error occurred: {str(e)}"})
