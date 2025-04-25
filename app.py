@@ -1,12 +1,31 @@
-import asyncio
 import json
 import base64
 import numpy as np
 import cv2
-import websockets
-import aiohttp
 import socket
+import asyncio
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO
+from flask_cors import CORS
 from ultralytics import YOLO
+import aiohttp
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Configure CORS
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:3000", "http://drangue.ai/"],  # Add other origins as needed
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Range", "X-Content-Range"],
+        "supports_credentials": True
+    }
+})
+
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000", "http://drangue.ai/"])
 
 # Global variables for models
 model_cache = {}
@@ -215,40 +234,30 @@ async def process_frame_data(data):
         }
 
 
-async def handle_raspberry_pi(websocket):
-    """Handle WebSocket connection from Raspberry Pi."""
-    pi_id = id(websocket)
-    print(f"Raspberry Pi connected: {pi_id}")
+@socketio.on('connect')
+def handle_connect():
+    print(f"Client connected: {request.sid}")
 
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f"Client disconnected: {request.sid}")
+
+
+@socketio.on('frame')
+async def handle_frame(data):
+    """Handle frame data from client"""
     try:
-        while True:
-            # Receive frame from Raspberry Pi
-            data = await websocket.recv()
-            frame_data = json.loads(data)
-
-            # Process the frame
-            result = await process_frame_data(frame_data)
-
-            # Send processed frame back to Raspberry Pi
-            await websocket.send(json.dumps(result))
-
-    except websockets.exceptions.ConnectionClosed:
-        print(f"Raspberry Pi {pi_id} disconnected")
+        # Create an event loop for the async process
+        result = await process_frame_data(data)
+        # Emit the processed result back to the client
+        socketio.emit('processed_frame', result, room=request.sid)
     except Exception as e:
-        print(f"Error handling Raspberry Pi {pi_id}: {e}")
-    finally:
-        print(f"Connection with Raspberry Pi {pi_id} closed")
+        print(f"Error handling frame from {request.sid}: {e}")
+        socketio.emit('error', {"error": str(e)}, room=request.sid)
 
 
-async def get_public_ip():
-    """Get the public IP address of this server."""
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://api.ipify.org") as response:
-                return await response.text()
-    except Exception as e:
-        print(f"Error getting public IP: {e}")
-        return "unknown"
+# Removed async get_public_ip function as it's not needed in Lambda environment
 
 
 def get_local_ip():
@@ -264,42 +273,11 @@ def get_local_ip():
         return "127.0.0.1"
 
 
-async def main():
-    # Get IP addresses
-    public_ip = await get_public_ip()
-    local_ip = get_local_ip()
+@app.route('/info')
+def server_info():
+    """Return information about the server and available models"""
+    return jsonify({
+        "models": MODEL_TYPES,
+        "local_ip": get_local_ip()
+    })
 
-    # Start WebSocket server to accept connections from Raspberry Pi
-    server = await websockets.serve(
-        handle_raspberry_pi,
-        "0.0.0.0",  # Listen on all network interfaces
-        9000,  # Different port from the Raspberry Pi's server
-        max_size=10 * 1024 * 1024,  # 10MB max message size
-        max_queue=16,  # Smaller queue is fine for fewer connections
-    )
-
-    print("\n" + "=" * 50)
-    print(f"AI Processing Server started on port 9000")
-    print(f"Public IP: {public_ip}")
-    print(f"Local IP: {local_ip}")
-    print(f"WebSocket URLs:")
-    print(f"  - Local network: ws://{local_ip}:9000")
-    print(f"  - Public (if port forwarded): ws://{public_ip}:9000")
-    print("=" * 50 + "\n")
-    print("Available model types:")
-    for model_type, config in MODEL_TYPES.items():
-        print(f"  - {model_type}: {', '.join(config['modes'])}")
-        for mode in config["modes"]:
-            print(f"    - {mode} classes: {config['classes'][mode]}")
-    print("=" * 50 + "\n")
-    print("Waiting for Raspberry Pi connections...")
-
-    # Keep the server running
-    await server.wait_closed()
-
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Server shutting down...")
