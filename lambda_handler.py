@@ -14,7 +14,8 @@ def get_allowed_origin(event):
         "https://www.drangue.ai",
         "https://drangue.ai",
         "https://palm.drangue.ai",
-        "https://pineapple.drangue.ai"
+        "https://pineapple.drangue.ai",
+        "*"
     ]
     
     # Return the origin if it's allowed, otherwise return default

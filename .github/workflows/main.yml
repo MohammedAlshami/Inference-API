@@ -96,19 +96,4 @@ jobs:
           else
             echo "Permission already exists."
           fi
-      # - name: Update README with Lambda Function URL
-      #   env:
-      #     FUNCTION_NAME: my-lambda-function  # Replace with your Lambda name
-      #   run: |
-      #     # Get the Lambda URL
-      #     FUNCTION_URL=$(aws lambda get-function-url-config --function-name $FUNCTION_NAME --query 'FunctionUrl' --output text)
-
-      #     # Update README.md
-      #     echo -e "\n## API Endpoint\n**Lambda Function URL:** [$FUNCTION_URL]($FUNCTION_URL)" >> README.md
-
-      #     # Commit and push the change
-      #     git config --global user.name "GitHub Actions"
-      #     git config --global user.email "actions@github.com"
-      #     git add README.md
-      #     git commit -m "Update README with Lambda URL"
-      #     git push
+   
